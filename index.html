@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
   --bg:#F6F3EA; --surface:#FFFFFF; --surface-2:#EFEBDD; --border:#DDD6C2;
@@ -81,15 +82,25 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);fon
 .topbar .sub{font-size:13px;color:var(--text-muted);margin-top:3px;}
 .topbar .who{font-size:13px;color:var(--text-muted);}
 .headerline{height:3px;border-radius:3px;background:linear-gradient(90deg,var(--sw2-dot),var(--sw0-dot) 35%,var(--sw4-dot) 65%,var(--sw3-dot));opacity:0.55;margin:14px 0 22px;}
-.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:22px;}
-.tab-btn{appearance:none;border:none;background:none;padding:10px 16px;font-family:var(--sans);font-size:14px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .12s;}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:22px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.tab-btn{appearance:none;border:none;background:none;padding:10px 16px;font-family:var(--sans);font-size:14px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .12s,border-color .12s;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;}
+.tab-btn svg{width:16px;height:16px;flex:none;opacity:0.75;}
 .tab-btn:hover{color:var(--text);}
 .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:500;}
+.tab-btn.active svg{opacity:1;}
 .tab-panel{display:none;}
-.tab-panel.active{display:block;}
+.tab-panel.active{display:block;animation:fadeIn .15s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(2px);}to{opacity:1;transform:translateY(0);}}
+
+.toolbar-row{display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.btn-icon{width:15px;height:15px;flex:none;}
+.export-btn{border:1px solid var(--border);border-radius:8px;margin-bottom:6px;padding:7px 13px;background:var(--surface);}
+.export-btn:hover{color:var(--accent);border-color:var(--accent);background:var(--accent-soft);}
+.export-btn.active{border-bottom:1px solid var(--border);}
 
 .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px;}
-.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);transition:transform .12s,box-shadow .12s;}
+.kpi:hover{transform:translateY(-1px);box-shadow:0 2px 4px rgba(40,34,20,0.06), 0 4px 16px rgba(40,34,20,0.06);}
 .kpi .n{font-family:var(--mono);font-size:24px;font-weight:500;}
 .kpi .l{font-size:12px;color:var(--text-muted);margin-top:3px;}
 
@@ -135,10 +146,16 @@ details.t-node summary .meta{color:var(--text-muted);font-size:12px;}
 .res-item .crumb b{color:var(--text);font-weight:500;}
 .res-item .row2{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-family:var(--mono);font-size:13px;}
 
-.select-chain{display:flex;flex-direction:column;gap:14px;}
-.chain-level{border-left:2px solid var(--border);padding-left:14px;}
-.chain-level.done{border-left-color:var(--accent);}
-.chain-level h3{font-size:13px;font-weight:500;margin:0 0 8px;color:var(--text-muted);}
+.select-chain{display:flex;flex-direction:column;gap:4px;}
+.chain-level{position:relative;padding:0 0 18px 34px;}
+.chain-level::before{content:'';position:absolute;left:11px;top:26px;bottom:-2px;width:2px;background:var(--border);}
+.chain-level:last-child::before{display:none;}
+.chain-level::after{content:attr(data-step);position:absolute;left:0;top:0;width:24px;height:24px;border-radius:50%;
+  background:var(--surface-2);color:var(--text-muted);border:2px solid var(--border);
+  font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;font-family:var(--sans);}
+.chain-level.done::after{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);content:'✓';}
+.chain-level.active::after{border-color:var(--accent);color:var(--accent);}
+.chain-level h3{font-size:13px;font-weight:500;margin:2px 0 8px;color:var(--text-muted);}
 .chain-level.done h3{color:var(--text);}
 
 .moclo-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px;}
@@ -169,9 +186,10 @@ table.moclo-table tbody tr:hover{background:var(--surface-2);}
 
   <div id="app-content" style="display:none;">
     <div class="tabs">
-      <button class="tab-btn active" data-tab="tracabilite">Traçabilité</button>
-      <button class="tab-btn" data-tab="saisie">Saisie labo</button>
-      <button class="tab-btn" data-tab="moclo">Catalogue MoClo</button>
+      <button class="tab-btn active" data-tab="tracabilite"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M16.5 16.5l-4-4" stroke-linecap="round"/></svg>Traçabilité</button>
+      <button class="tab-btn" data-tab="saisie"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14.5 2.5l3 3-9.5 9.5-3.8.8.8-3.8z" stroke-linejoin="round"/></svg>Saisie labo</button>
+      <button class="tab-btn" data-tab="moclo"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="4" width="15" height="12" rx="1.5"/><path d="M2.5 8.5h15M8.5 4v12"/></svg>Catalogue MoClo</button>
+      <button class="tab-btn export-btn" id="export-btn" style="margin-left:auto;" title="Exporter toutes les données en fichier Excel"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 2.5v10m0 0l-3.5-3.5M10 12.5l3.5-3.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 13.5v2a1.5 1.5 0 001.5 1.5h11a1.5 1.5 0 001.5-1.5v-2" stroke-linecap="round"/></svg>Exporter (.xlsx)</button>
     </div>
 
     <div id="panel-tracabilite" class="tab-panel active"></div>
@@ -409,14 +427,86 @@ function renderActiveTab(){
   renderMoclo();
 }
 
-document.querySelectorAll('.tab-btn').forEach(btn=>{
+document.querySelectorAll('.tab-btn:not(.export-btn)').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-btn:not(.export-btn)').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
   });
 });
+
+document.getElementById('export-btn').addEventListener('click', exportToExcel);
+
+function exportToExcel(){
+  if(!window.XLSX){ alert("La librairie d'export n'a pas pu se charger. Vérifiez votre connexion."); return; }
+  const wb = XLSX.utils.book_new();
+
+  const isolementsSheet = S.isolements.map(iso=>{
+    const c = colonie(iso.colonie), b = c?boite(c.boite):null, t = b?transfo(b.transformation):null;
+    const s = t?souche(t.souche):null, p = t?plasmide(t.plasmide):null;
+    return {
+      'ID Isolement': idIsolementFor(iso),
+      'Collection': nomCollectionFor(iso),
+      'Souche': s?s.nom:'',
+      'Plasmide': p?p.nom:'',
+      'Transformation': t?id2For(t):'',
+      'Boîte': b?b.lettre:'',
+      'N° Colonie': c?c.numColonie:'',
+      'N° Isolement': iso.numIsolement,
+      'Croissance': iso.croissance||'',
+      'Validation PCR': iso.validationPCR||'',
+      'Date PCR': iso.datePCR?fmtDate(iso.datePCR):'',
+      'Date repiquage': iso.dateRepiquage?fmtDate(iso.dateRepiquage):'',
+      'Commentaire': iso.commentaire||'',
+      'Dernier·e éditeur·rice': iso.dernierEditeurNom || iso.dernierEditeur || ''
+    };
+  });
+
+  const transfosSheet = S.transformations.map(t=>{
+    const cd = dateTransfo(t.codeDate), s = souche(t.souche), p = plasmide(t.plasmide);
+    return { 'ID': id2For(t), 'Souche': s?s.nom:'', 'Plasmide': p?p.nom:'', 'Date': cd?fmtDate(cd.date):'' };
+  });
+
+  const boitesSheet = S.boites.map(b=>{
+    const t = transfo(b.transformation);
+    return { 'ID Boîte': nomBoiteFor(b), 'Transformation': t?id2For(t):'', 'Lettre': b.lettre, 'Nb colonies (estimé)': b.nbColonies||'' };
+  });
+
+  const coloniesSheet = S.colonies.map(c=>{
+    const b = boite(c.boite);
+    return {
+      'ID Colonie': idColonieFor(c), 'Boîte': b?nomBoiteFor(b):'', 'N° Colonie': c.numColonie,
+      'Date étalement': c.dateEtalement?fmtDate(c.dateEtalement):'', 'Date isolements': c.dateIsolements?fmtDate(c.dateIsolements):''
+    };
+  });
+
+  const souchesSheet = S.souches.map(s=>({ 'ID': s.id, 'Nom': s.nom }));
+  const plasmidesSheet = S.plasmides.map(p=>({ 'ID': p.id, 'Nom': p.nom, 'Cassette': p.cassette||'' }));
+
+  const moCloSheet = S.moclo.map(m=>({
+    'Kit': m.kit, 'Boîte': m.box, 'Position': (m.row||'')+(m.col||''), 'Plasmide': m.plasmid,
+    'Niveau': m.level, 'Résistance': m.resistance, 'Insert': m.insert, 'Stock glycérol': m.glycerol,
+    'Stock dispo': m.stock, 'Miniprep': m.miniprep, 'Source': m.source
+  }));
+
+  const sheets = [
+    ['Isolements', isolementsSheet],
+    ['Transformations', transfosSheet],
+    ['Boites', boitesSheet],
+    ['Colonies', coloniesSheet],
+    ['Souches', souchesSheet],
+    ['Plasmides', plasmidesSheet],
+    ['Catalogue MoClo', moCloSheet]
+  ];
+  sheets.forEach(([name, rows])=>{
+    const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{}]);
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  });
+
+  const today = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, 'venturia_export_'+today+'.xlsx');
+}
 
 /* ---------- Tab 1: traçabilité ---------- */
 function renderTracabilite(){
@@ -487,7 +577,7 @@ function renderSearchResults(q){
   let html = '<div id="tracResultsArea">';
   html += '<div class="count-line">'+matches.length+' résultat'+(matches.length>1?'s':'')+'</div>';
   if(!matches.length){
-    html += '<div class="empty">Aucun isolement ne correspond à la recherche.</div>';
+    html += '<div class="empty">Rien ne correspond à cette recherche — vérifiez l\'orthographe ou essayez un terme plus court.</div>';
   }
   matches.forEach(iso=>{
     const c = colonie(iso.colonie), b = c?boite(c.boite):null, t = b?transfo(b.transformation):null;
@@ -516,11 +606,11 @@ function renderTree(){
     tBoites.forEach(b=>{ nIso += S.colonies.filter(c=>c.boite===b.id).reduce((acc,c)=>acc+S.isolements.filter(i=>i.colonie===c.id).length,0); });
     html += '<details class="t-node"><summary><span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span class="id2">'+esc(id2For(t))+'</span>'+plasmidChip(p?p.nom:'')+'</span><span class="meta">'+esc(cd?fmtDate(cd.date):'')+' · '+tBoites.length+' boîte(s) · '+nIso+' isolement(s)</span></summary>';
     html += '<div class="t-body">';
-    if(!tBoites.length) html += '<div class="empty">Aucune boîte enregistrée.</div>';
+    if(!tBoites.length) html += '<div class="empty">Aucune boîte enregistrée pour cette transformation.</div>';
     tBoites.forEach(b=>{
       const cols = S.colonies.filter(c=>c.boite===b.id).sort((a,c)=>a.numColonie-c.numColonie);
       html += '<div class="b-block"><div class="b-title">'+esc(nomBoiteFor(b))+'</div>';
-      if(!cols.length) html += '<div class="empty">Aucune colonie.</div>';
+      if(!cols.length) html += '<div class="empty">Aucune colonie dans cette boîte pour l\'instant.</div>';
       cols.forEach(c=>{
         const isos = S.isolements.filter(i=>i.colonie===c.id).sort((a,b2)=>a.numIsolement-b2.numIsolement);
         html += '<div class="c-row"><div class="c-title">'+esc(idColonieFor(c))+'</div>';
@@ -544,7 +634,7 @@ function renderSaisie(){
   let html = '<div class="card"><div class="select-chain">';
 
   // Level 1: transformation
-  html += '<div class="chain-level'+(saisie_sel.transfo?' done':'')+'"><h3>1 · Transformation</h3>';
+  html += '<div class="chain-level'+(saisie_sel.transfo?' done':' active')+'" data-step="1"><h3>Transformation</h3>';
   html += selectHtml('sel-transfo', [{v:'',t:'— choisir —'},{v:'__new',t:'+ Nouvelle transformation'}].concat(
     [...S.transformations].sort((a,b)=>{const da=dateTransfo(a.codeDate),db_=dateTransfo(b.codeDate);return (db_?db_.date:0)-(da?da.date:0);})
       .map(t=>({v:String(t.id), t:id2For(t)}))
@@ -557,7 +647,7 @@ function renderSaisie(){
   const curTransfoId = (saisie_sel.transfo && saisie_sel.transfo!=='__new') ? Number(saisie_sel.transfo) : null;
 
   if(curTransfoId){
-    html += '<div class="chain-level'+(saisie_sel.boite?' done':'')+'"><h3>2 · Boîte</h3>';
+    html += '<div class="chain-level'+(saisie_sel.boite?' done':' active')+'" data-step="2"><h3>Boîte</h3>';
     const boites = S.boites.filter(b=>b.transformation===curTransfoId).sort((a,b)=>a.lettre.localeCompare(b.lettre));
     html += selectHtml('sel-boite', [{v:'',t:'— choisir —'},{v:'__new',t:'+ Nouvelle boîte'}].concat(
       boites.map(b=>({v:String(b.id), t:nomBoiteFor(b)}))
@@ -569,7 +659,7 @@ function renderSaisie(){
   const curBoiteId = (saisie_sel.boite && saisie_sel.boite!=='__new') ? Number(saisie_sel.boite) : null;
 
   if(curBoiteId){
-    html += '<div class="chain-level'+(saisie_sel.colonie?' done':'')+'"><h3>3 · Colonie</h3>';
+    html += '<div class="chain-level'+(saisie_sel.colonie?' done':' active')+'" data-step="3"><h3>Colonie</h3>';
     const cols = S.colonies.filter(c=>c.boite===curBoiteId).sort((a,b)=>a.numColonie-b.numColonie);
     html += selectHtml('sel-colonie', [{v:'',t:'— choisir —'},{v:'__new',t:'+ Nouvelle colonie'}].concat(
       cols.map(c=>({v:String(c.id), t:idColonieFor(c)}))
@@ -581,7 +671,7 @@ function renderSaisie(){
   const curColonieId = (saisie_sel.colonie && saisie_sel.colonie!=='__new') ? Number(saisie_sel.colonie) : null;
 
   if(curColonieId){
-    html += '<div class="chain-level'+(saisie_sel.isolement?' done':'')+'"><h3>4 · Isolement</h3>';
+    html += '<div class="chain-level'+(saisie_sel.isolement?' done':' active')+'" data-step="4"><h3>Isolement</h3>';
     const isos = S.isolements.filter(i=>i.colonie===curColonieId).sort((a,b)=>a.numIsolement-b.numIsolement);
     html += selectHtml('sel-isolement', [{v:'',t:'— choisir —'},{v:'__new',t:'+ Nouvel isolement'}].concat(
       isos.map(i=>({v:String(i.id), t:idIsolementFor(i)+ (nomCollectionFor(i)?(' · '+nomCollectionFor(i)):'')}))
@@ -857,7 +947,7 @@ function renderMoclo(){
   html += '<div class="table-wrap"><table class="moclo-table"><thead><tr>';
   ['Kit','Boîte','Position','Plasmide','Niveau','Résistance','Insert','Stock','Miniprep'].forEach(h=>{ html += '<th>'+h+'</th>'; });
   html += '</tr></thead><tbody>';
-  if(!filtered.length){ html += '<tr><td colspan="9" class="empty">Aucun résultat.</td></tr>'; }
+  if(!filtered.length){ html += '<tr><td colspan="9" class="empty">Aucun plasmide ne correspond à ces filtres.</td></tr>'; }
   filtered.forEach(m=>{
     html += '<tr>';
     html += '<td>'+plasmidChip(m.kit)+'</td>';
