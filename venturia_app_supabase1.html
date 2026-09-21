@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Venturia — suivi des transformations</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#F6F3EA; --surface:#FFFFFF; --surface-2:#EFEBDD; --border:#DDD6C2;
+  --text:#242118; --text-muted:#6E695C; --text-faint:#9C9686;
+  --accent:#3E6B44; --accent-ink:#EFF5EE; --accent-soft:#E1EBDF;
+  --warn:#B4791C; --warn-soft:#F5E7CF;
+  --bad:#B4482C; --bad-soft:#F3E0D8;
+  --radius:12px;
+  --shadow:0 1px 2px rgba(40,34,20,0.05), 0 2px 10px rgba(40,34,20,0.04);
+  --sans:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Consolas,monospace;
+  /* plasmid / kit color swatches -- one hue family per index, light mode */
+  --sw0-bg:#E3EDFA; --sw0-tx:#1F5199; --sw0-dot:#3E7BCB;
+  --sw1-bg:#F7EAD6; --sw1-tx:#93601C; --sw1-dot:#C4832E;
+  --sw2-bg:#E4F0DC; --sw2-tx:#3C6B29; --sw2-dot:#5D9A3F;
+  --sw3-bg:#F7E4EE; --sw3-tx:#9B3E68; --sw3-dot:#C85C8E;
+  --sw4-bg:#ECE5F7; --sw4-tx:#5A3E9B; --sw4-dot:#8062C4;
+  --sw5-bg:#DEF2ED; --sw5-tx:#217065; --sw5-dot:#31A192;
+  --sw6-bg:#FBE5DE; --sw6-tx:#A2492A; --sw6-dot:#CC6A42;
+  --sw7-bg:#F1EFD8; --sw7-tx:#736A1E; --sw7-dot:#A79A2C;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#16181450; --bg:#181A16; --surface:#212420; --surface-2:#292C27; --border:#3A3D36;
+    --text:#EAE7DC; --text-muted:#A6A292; --text-faint:#6F6C60;
+    --accent:#8FC28A; --accent-ink:#14201A; --accent-soft:#28352A;
+    --warn:#E3B15C; --warn-soft:#3A2F19;
+    --bad:#E08A6C; --bad-soft:#3A241D;
+    --shadow:0 1px 2px rgba(0,0,0,0.2), 0 2px 12px rgba(0,0,0,0.18);
+    --sw0-bg:#1E2C3E; --sw0-tx:#8FB8ED; --sw0-dot:#5F93D6;
+    --sw1-bg:#332A19; --sw1-tx:#E2B979; --sw1-dot:#C4933F;
+    --sw2-bg:#20301B; --sw2-tx:#9CCB84; --sw2-dot:#6EA84E;
+    --sw3-bg:#332030; --sw3-tx:#E3A0C2; --sw3-dot:#C4709F;
+    --sw4-bg:#291F3B; --sw4-tx:#BDA6EA; --sw4-dot:#8F71CE;
+    --sw5-bg:#183330; --sw5-tx:#79D2C0; --sw5-dot:#3FAE9B;
+    --sw6-bg:#3A2419; --sw6-tx:#E5A681; --sw6-dot:#CC7A4F;
+    --sw7-bg:#302D16; --sw7-tx:#D3C776; --sw7-dot:#A79A2C;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#181A16; --surface:#212420; --surface-2:#292C27; --border:#3A3D36;
+  --text:#EAE7DC; --text-muted:#A6A292; --text-faint:#6F6C60;
+  --accent:#8FC28A; --accent-ink:#14201A; --accent-soft:#28352A;
+  --warn:#E3B15C; --warn-soft:#3A2F19;
+  --bad:#E08A6C; --bad-soft:#3A241D;
+  --shadow:0 1px 2px rgba(0,0,0,0.2), 0 2px 12px rgba(0,0,0,0.18);
+  --sw0-bg:#1E2C3E; --sw0-tx:#8FB8ED; --sw0-dot:#5F93D6;
+  --sw1-bg:#332A19; --sw1-tx:#E2B979; --sw1-dot:#C4933F;
+  --sw2-bg:#20301B; --sw2-tx:#9CCB84; --sw2-dot:#6EA84E;
+  --sw3-bg:#332030; --sw3-tx:#E3A0C2; --sw3-dot:#C4709F;
+  --sw4-bg:#291F3B; --sw4-tx:#BDA6EA; --sw4-dot:#8F71CE;
+  --sw5-bg:#183330; --sw5-tx:#79D2C0; --sw5-dot:#3FAE9B;
+  --sw6-bg:#3A2419; --sw6-tx:#E5A681; --sw6-dot:#CC7A4F;
+  --sw7-bg:#302D16; --sw7-tx:#D3C776; --sw7-dot:#A79A2C;
+}
+.sw0{background:var(--sw0-bg);color:var(--sw0-tx);} .dot0{background:var(--sw0-dot);}
+.sw1{background:var(--sw1-bg);color:var(--sw1-tx);} .dot1{background:var(--sw1-dot);}
+.sw2{background:var(--sw2-bg);color:var(--sw2-tx);} .dot2{background:var(--sw2-dot);}
+.sw3{background:var(--sw3-bg);color:var(--sw3-tx);} .dot3{background:var(--sw3-dot);}
+.sw4{background:var(--sw4-bg);color:var(--sw4-tx);} .dot4{background:var(--sw4-dot);}
+.sw5{background:var(--sw5-bg);color:var(--sw5-tx);} .dot5{background:var(--sw5-dot);}
+.sw6{background:var(--sw6-bg);color:var(--sw6-tx);} .dot6{background:var(--sw6-dot);}
+.sw7{background:var(--sw7-bg);color:var(--sw7-tx);} .dot7{background:var(--sw7-dot);}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex:none;}
+.plasmid-chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:12px;padding:2px 9px 2px 7px;border-radius:99px;font-weight:500;}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.5;}
+.wrap{max-width:1000px;margin:0 auto;padding:26px 20px 60px;}
+.topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px;}
+.topbar h1{font-size:22px;font-weight:600;margin:0;letter-spacing:-0.01em;}
+.topbar .sub{font-size:13px;color:var(--text-muted);margin-top:3px;}
+.topbar .who{font-size:13px;color:var(--text-muted);}
+.headerline{height:3px;border-radius:3px;background:linear-gradient(90deg,var(--sw2-dot),var(--sw0-dot) 35%,var(--sw4-dot) 65%,var(--sw3-dot));opacity:0.55;margin:14px 0 22px;}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:22px;}
+.tab-btn{appearance:none;border:none;background:none;padding:10px 16px;font-family:var(--sans);font-size:14px;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .12s;}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:500;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);}
+.kpi .n{font-family:var(--mono);font-size:24px;font-weight:500;}
+.kpi .l{font-size:12px;color:var(--text-muted);margin-top:3px;}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px;box-shadow:var(--shadow);}
+input[type=text],input[type=search],input[type=date],input[type=number],select,textarea{
+  font-family:var(--sans);font-size:14px;color:var(--text);background:var(--surface);
+  border:1px solid var(--border);border-radius:8px;padding:8px 10px;width:100%;
+}
+textarea{min-height:56px;resize:vertical;}
+label{display:block;font-size:12px;color:var(--text-muted);margin-bottom:4px;}
+.field{margin-bottom:12px;}
+.field-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}
+button.btn{appearance:none;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);
+  font-family:var(--sans);font-size:14px;font-weight:500;padding:9px 16px;border-radius:8px;cursor:pointer;}
+button.btn:hover{opacity:0.92;}
+button.btn.secondary{background:var(--surface);color:var(--text);border-color:var(--border);}
+button.btn:disabled{opacity:0.5;cursor:not-allowed;}
+.err{color:var(--bad);font-size:13px;margin-top:6px;}
+.ok-msg{color:var(--accent);font-size:13px;margin-top:6px;}
+
+.search-box{margin-bottom:16px;}
+details.t-node{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;overflow:hidden;box-shadow:var(--shadow);}
+details.t-node[open]{border-color:var(--accent);}
+details.t-node summary{cursor:pointer;padding:12px 16px;font-size:14px;list-style:none;display:flex;justify-content:space-between;gap:10px;align-items:baseline;}
+details.t-node summary::-webkit-details-marker{display:none;}
+details.t-node summary .id2{font-family:var(--mono);font-weight:500;}
+details.t-node summary .meta{color:var(--text-muted);font-size:12px;}
+.t-body{padding:0 14px 12px;}
+.b-block{border-top:1px solid var(--border);padding:10px 0;}
+.b-block .b-title{font-family:var(--mono);font-size:13px;font-weight:500;margin-bottom:6px;}
+.c-row{padding:6px 0 6px 12px;border-left:2px solid var(--border);margin-bottom:4px;}
+.c-row .c-title{font-family:var(--mono);font-size:12.5px;color:var(--text-muted);margin-bottom:4px;}
+.iso-line{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:4px 0 4px 14px;font-size:13px;}
+.iso-id{font-family:var(--mono);font-size:12.5px;}
+.badge{display:inline-block;font-size:11px;padding:2px 7px;border-radius:99px;font-weight:500;}
+.badge.good{background:var(--accent-soft);color:var(--accent);}
+.badge.bad{background:var(--bad-soft);color:var(--bad);}
+.badge.warn{background:var(--warn-soft);color:var(--warn);}
+.badge.neutral{background:var(--surface-2);color:var(--text-muted);}
+
+.res-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:9px;box-shadow:var(--shadow);}
+.res-item .crumb{font-size:12px;color:var(--text-muted);margin-bottom:5px;}
+.res-item .crumb b{color:var(--text);font-weight:500;}
+.res-item .row2{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-family:var(--mono);font-size:13px;}
+
+.select-chain{display:flex;flex-direction:column;gap:14px;}
+.chain-level{border-left:2px solid var(--border);padding-left:14px;}
+.chain-level.done{border-left-color:var(--accent);}
+.chain-level h3{font-size:13px;font-weight:500;margin:0 0 8px;color:var(--text-muted);}
+.chain-level.done h3{color:var(--text);}
+
+.moclo-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:14px;}
+table.moclo-table{width:100%;border-collapse:collapse;font-size:13px;}
+table.moclo-table th{text-align:left;font-size:11px;color:var(--text-muted);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);}
+table.moclo-table td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:top;}
+table.moclo-table td.mono{font-family:var(--mono);font-size:12.5px;}
+.table-wrap{max-height:560px;overflow:auto;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);}
+table.moclo-table tbody tr:hover{background:var(--surface-2);}
+.count-line{font-size:12px;color:var(--text-muted);margin-bottom:8px;}
+.empty{color:var(--text-faint);font-size:13px;padding:16px 0;text-align:center;}
+.seed-loader{padding:40px 0;text-align:center;color:var(--text-muted);font-size:14px;}
+.pill-select{display:flex;flex-wrap:wrap;gap:6px;}
+.pill-select button{appearance:none;border:1px solid var(--border);background:var(--surface);color:var(--text);
+  font-family:var(--sans);font-size:12.5px;padding:5px 10px;border-radius:99px;cursor:pointer;}
+.pill-select button.sel{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <div><h1>Venturia — suivi des transformations</h1><div class="sub">Souches, plasmides, transformations et collections d'isolements</div></div>
+    <div class="who" id="whoami"></div>
+  </div>
+  <div class="headerline"></div>
+
+  <div id="auth-gate"></div>
+
+  <div id="app-content" style="display:none;">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tracabilite">Traçabilité</button>
+      <button class="tab-btn" data-tab="saisie">Saisie labo</button>
+      <button class="tab-btn" data-tab="moclo">Catalogue MoClo</button>
+    </div>
+
+    <div id="panel-tracabilite" class="tab-panel active"></div>
+    <div id="panel-saisie" class="tab-panel"></div>
+    <div id="panel-moclo" class="tab-panel"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+let db = null, userCap = null, meProfile = { id:null, name:'' };
+let S = { souches:[], plasmides:[], moclo:[], datesTransfo:[], transformations:[], boites:[], colonies:[], isolements:[] };
+const COLLECTIONS = Object.keys(S);
+let ready = { souches:false, plasmides:false, moclo:false, datesTransfo:false, transformations:false, boites:false, colonies:false, isolements:false };
+let searchQuery = '';
+let moclo_filters = { kit:'', level:'', resistance:'', q:'' };
+let saisie_sel = { transfo:null, boite:null, colonie:null, isolement:null };
+
+function allLoaded(){ return Object.values(ready).every(Boolean); }
+
+function fmtDate(ts){
+  if(!ts) return '—';
+  const d = new Date(ts*1000);
+  return d.toLocaleDateString('fr-FR', {timeZone:'UTC', day:'2-digit', month:'2-digit', year:'numeric'});
+}
+function dateToTs(dateStr){
+  if(!dateStr) return null;
+  return Math.floor(Date.parse(dateStr+'T00:00:00Z')/1000);
+}
+function tsToInputDate(ts){
+  if(!ts) return '';
+  return new Date(ts*1000).toISOString().slice(0,10);
+}
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function nextId(coll){
+  const arr = S[coll];
+  return (arr.length ? Math.max(...arr.map(x=>x.id)) : 0) + 1;
+}
+
+/* ---------- deterministic color per plasmid / kit name ---------- */
+function swatchIndex(name){
+  const s = String(name||'');
+  let h = 0;
+  for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) >>> 0; }
+  return h % 8;
+}
+function plasmidChip(name){
+  if(!name) return '';
+  const i = swatchIndex(name);
+  return '<span class="plasmid-chip sw'+i+'"><span class="dot dot'+i+'"></span>'+esc(name)+'</span>';
+}
+function colorDot(name){
+  return '<span class="dot dot'+swatchIndex(name)+'"></span>';
+}
+
+/* ---------- formulas (mirrors the Grist document's own formula columns) ---------- */
+function rankForDate(ts){
+  return S.datesTransfo.filter(d=>d.date<=ts).length;
+}
+function souche(id){ return S.souches.find(x=>x.id===id); }
+function plasmide(id){ return S.plasmides.find(x=>x.id===id); }
+function dateTransfo(id){ return S.datesTransfo.find(x=>x.id===id); }
+function transfo(id){ return S.transformations.find(x=>x.id===id); }
+function boite(id){ return S.boites.find(x=>x.id===id); }
+function colonie(id){ return S.colonies.find(x=>x.id===id); }
+
+function id2For(t){
+  if(!t) return '?';
+  const cd = dateTransfo(t.codeDate);
+  const s = souche(t.souche), p = plasmide(t.plasmide);
+  if(!cd) return '?';
+  return 'T'+rankForDate(cd.date)+'_'+(s?s.nom:'?')+'_'+(p?p.nom:'?');
+}
+function nomBoiteFor(b){
+  if(!b) return '?';
+  return id2For(transfo(b.transformation))+'-'+b.lettre;
+}
+function idColonieFor(c){
+  if(!c) return '?';
+  return nomBoiteFor(boite(c.boite))+'_'+String(c.numColonie).padStart(2,'0');
+}
+function idIsolementFor(i){
+  if(!i) return '?';
+  return idColonieFor(colonie(i.colonie))+'_'+i.numIsolement;
+}
+function nomCollectionFor(i){
+  if(!i || i.validationPCR!=='Oui' || !i.datePCR) return '';
+  const annee = new Date(i.datePCR*1000).getUTCFullYear();
+  const valides = S.isolements
+    .filter(r=>r.validationPCR==='Oui' && r.datePCR && new Date(r.datePCR*1000).getUTCFullYear()===annee)
+    .sort((a,b)=> a.datePCR-b.datePCR || a.id-b.id);
+  const idx = valides.findIndex(r=>r.id===i.id);
+  if(idx<0) return '';
+  return String(annee).slice(-2)+'OGM'+(idx+1);
+}
+
+/* ---------- Supabase config ---------- */
+// Remplissez ces deux valeurs (Project Settings > API dans votre projet Supabase).
+const SUPABASE_URL = 'https://jxgtiuosusvbxotoetkf.supabase.co/rest/v1/';
+const SUPABASE_ANON_KEY = 'sb_publishable_6tn7dGh_PYU5Ll0WFQ0xcw_tElBW68M';
+
+/* ---------- db shim : reproduit l'API collection()/doc()/onSnapshot() ----------
+   au-dessus de Supabase, pour que tout le reste du fichier (inchangé) continue
+   de fonctionner. Chaque "collection" est une table Postgres à 2 colonnes :
+   id_key (text, clé primaire) et payload (jsonb). Voir schema.sql. */
+function makeSupabaseDb(sb){
+  function tableRef(name){
+    return {
+      doc(id){
+        const idKey = String(id);
+        return {
+          async get(){
+            const { data, error } = await sb.from(name).select('payload').eq('id_key', idKey).maybeSingle();
+            if(error) throw error;
+            return { exists: !!data, data: () => data ? data.payload : null };
+          },
+          async set(value){
+            const { error } = await sb.from(name).upsert({ id_key: idKey, payload: value });
+            if(error) throw error;
+          }
+        };
+      },
+      onSnapshot(onNext, onError){
+        async function fetchAll(){
+          const { data, error } = await sb.from(name).select('payload').order('id_key');
+          if(error){ onError && onError(error); return; }
+          onNext({ docs: data.map(r => ({ data: () => r.payload })) });
+        }
+        fetchAll();
+        sb.channel(name+'-changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: name }, fetchAll)
+          .subscribe();
+      }
+    };
+  }
+  return {
+    collection(name){ return tableRef(name); },
+    doc(path){
+      const [name, id] = path.split('/');
+      return tableRef(name).doc(id);
+    }
+  };
+}
+
+let sbClient = null;
+let authSession = null;
+
+function renderAuthGate(){
+  if(!authSession){
+    document.getElementById('app-content').style.display = 'none';
+    showLoginScreen();
+    return;
+  }
+  meProfile = { id: authSession.user.id, name: authSession.user.email };
+  document.getElementById('whoami').innerHTML =
+    'Connecté·e en tant que '+esc(meProfile.name)+
+    ' <button id="logout-btn" class="btn secondary" style="margin-left:8px;padding:3px 10px;font-size:12px;">Se déconnecter</button>';
+  document.getElementById('logout-btn').addEventListener('click', async ()=>{
+    await sbClient.auth.signOut();
+  });
+  document.getElementById('auth-gate').innerHTML = '';
+  document.getElementById('app-content').style.display = '';
+  if(!db){
+    db = makeSupabaseDb(sbClient);
+    subscribeAll();
+  }
+}
+
+function showLoginScreen(){
+  const gate = document.getElementById('auth-gate');
+  gate.innerHTML =
+    '<div class="card" style="max-width:380px;margin:40px auto;">'+
+      '<h3 style="margin-top:0;">Connexion</h3>'+
+      '<p class="count-line">Réservé à l\'équipe. Un lien de connexion vous sera envoyé par e-mail.</p>'+
+      '<div class="field"><label>E-mail</label><input type="email" id="login-email" placeholder="vous@labo.fr"></div>'+
+      '<button class="btn" id="login-send">Envoyer le lien</button>'+
+      '<div id="login-msg" class="ok-msg"></div>'+
+      '<div id="login-err" class="err"></div>'+
+    '</div>';
+  const emailInput = document.getElementById('login-email');
+  const send = async ()=>{
+    const email = emailInput.value.trim();
+    const msgEl = document.getElementById('login-msg');
+    const errEl = document.getElementById('login-err');
+    msgEl.textContent = ''; errEl.textContent = '';
+    if(!email){ errEl.textContent = 'Indiquez votre e-mail.'; return; }
+    try{
+      const { error } = await sbClient.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.href } });
+      if(error) throw error;
+      msgEl.textContent = 'Lien envoyé — vérifiez votre boîte mail (et les spams).';
+    }catch(e){
+      errEl.textContent = "Échec de l'envoi. Vérifiez l'adresse, ou demandez à l'administrateur d'autoriser ce compte.";
+    }
+  };
+  document.getElementById('login-send').addEventListener('click', send);
+  emailInput.addEventListener('keydown', e=>{ if(e.key==='Enter') send(); });
+  emailInput.focus();
+}
+
+function subscribeAll(){
+  COLLECTIONS.forEach(coll=>{
+    db.collection(coll).onSnapshot(snap=>{
+      S[coll] = snap.docs.map(d=>d.data());
+      ready[coll] = true;
+      onDataChange();
+    }, err=>{
+      ready[coll] = true;
+      onDataChange();
+    });
+  });
+}
+
+let renderQueued = false;
+function onDataChange(){
+  if(renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(()=>{
+    renderQueued = false;
+    renderActiveTab();
+  });
+}
+
+/* ---------- tabs ---------- */
+function renderActiveTab(){
+  if(!allLoaded()){
+    document.getElementById('panel-tracabilite').innerHTML = '<div class="seed-loader">Chargement…</div>';
+    return;
+  }
+  renderTracabilite();
+  renderSaisie();
+  renderMoclo();
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ---------- Tab 1: traçabilité ---------- */
+function renderTracabilite(){
+  const el = document.getElementById('panel-tracabilite');
+  const totalIso = S.isolements.length;
+  const croissanceOui = S.isolements.filter(i=>i.croissance==='Oui').length;
+  const pcrOui = S.isolements.filter(i=>i.validationPCR==='Oui').length;
+  const curYear = new Date().getUTCFullYear();
+  const collectionsThisYear = S.isolements.filter(i=>{
+    const n = nomCollectionFor(i);
+    return n && n.startsWith(String(curYear).slice(-2)+'OGM');
+  }).length;
+
+  let html = '';
+  html += '<div class="kpi-row">';
+  html += kpi(totalIso, 'isolements au total');
+  html += kpi(totalIso ? Math.round(100*croissanceOui/totalIso)+'%' : '—', 'croissance positive');
+  html += kpi(totalIso ? Math.round(100*pcrOui/totalIso)+'%' : '—', 'validation PCR');
+  html += kpi(collectionsThisYear, 'collections nommées '+curYear);
+  html += '</div>';
+
+  html += '<div class="search-box"><input type="search" id="tracSearch" placeholder="Rechercher : nom de collection (25OGM4), souche, plasmide, ID isolement…" value="'+esc(searchQuery)+'"></div>';
+
+  if(searchQuery.trim()){
+    html += renderSearchResults(searchQuery.trim().toLowerCase());
+  } else {
+    html += renderTree();
+  }
+
+  el.innerHTML = html;
+  const input = document.getElementById('tracSearch');
+  input.addEventListener('input', ()=>{ searchQuery = input.value; renderTracabiliteResultsOnly(); });
+  input.focus();
+  input.selectionStart = input.selectionEnd = input.value.length;
+}
+
+function renderTracabiliteResultsOnly(){
+  // re-render just results area, keep focus in search box
+  const container = document.getElementById('tracResultsArea');
+  if(!container) return;
+  container.innerHTML = searchQuery.trim() ? renderSearchResults(searchQuery.trim().toLowerCase()) : renderTree();
+}
+
+function kpi(n,l){
+  return '<div class="kpi"><div class="n">'+esc(n)+'</div><div class="l">'+esc(l)+'</div></div>';
+}
+
+function badgeFor(iso){
+  let b = '';
+  b += iso.croissance==='Oui' ? '<span class="badge good">croissance</span>' : (iso.croissance==='Non' ? '<span class="badge bad">pas de croissance</span>' : '<span class="badge neutral">croissance ?</span>');
+  b += iso.validationPCR==='Oui' ? '<span class="badge good">PCR validée</span>' : (iso.validationPCR==='Non' ? '<span class="badge bad">PCR négative</span>' : '<span class="badge neutral">PCR en attente</span>');
+  const nc = nomCollectionFor(iso);
+  if(nc) b += '<span class="badge warn">'+esc(nc)+'</span>';
+  return b;
+}
+
+function renderSearchResults(q){
+  const matches = S.isolements.filter(iso=>{
+    const c = colonie(iso.colonie), b = c?boite(c.boite):null, t = b?transfo(b.transformation):null;
+    const s = t?souche(t.souche):null, p = t?plasmide(t.plasmide):null;
+    const hay = [
+      idIsolementFor(iso), nomCollectionFor(iso), c?idColonieFor(c):'', b?nomBoiteFor(b):'',
+      t?id2For(t):'', s?s.nom:'', p?p.nom:'', iso.commentaire||''
+    ].join(' ').toLowerCase();
+    return hay.includes(q);
+  }).sort((a,b)=> (b.datePCR||0)-(a.datePCR||0) || b.id-a.id);
+
+  let html = '<div id="tracResultsArea">';
+  html += '<div class="count-line">'+matches.length+' résultat'+(matches.length>1?'s':'')+'</div>';
+  if(!matches.length){
+    html += '<div class="empty">Aucun isolement ne correspond à la recherche.</div>';
+  }
+  matches.forEach(iso=>{
+    const c = colonie(iso.colonie), b = c?boite(c.boite):null, t = b?transfo(b.transformation):null;
+    const s = t?souche(t.souche):null, p = t?plasmide(t.plasmide):null;
+    html += '<div class="res-item">';
+    html += '<div class="crumb" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;">'+esc(s?s.nom:'?')+' ×&nbsp;'+plasmidChip(p?p.nom:'?')+'&nbsp;→&nbsp; <b>'+esc(t?id2For(t):'?')+'</b> &nbsp;→&nbsp; boîte '+esc(b?b.lettre:'?')+' &nbsp;→&nbsp; colonie '+esc(c?c.numColonie:'?')+'</div>';
+    html += '<div class="row2"><span class="iso-id">'+esc(idIsolementFor(iso))+'</span>'+badgeFor(iso)+'</div>';
+    if(iso.datePCR) html += '<div class="crumb" style="margin-top:5px;">PCR le '+fmtDate(iso.datePCR)+(iso.dateRepiquage?(' · repiquage le '+fmtDate(iso.dateRepiquage)):'')+'</div>';
+    if(iso.commentaire) html += '<div class="crumb" style="margin-top:3px;">'+esc(iso.commentaire)+'</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+function renderTree(){
+  let html = '<div id="tracResultsArea">';
+  const transfos = [...S.transformations].sort((a,b)=>{
+    const da = dateTransfo(a.codeDate), db_ = dateTransfo(b.codeDate);
+    return (db_?db_.date:0) - (da?da.date:0);
+  });
+  transfos.forEach(t=>{
+    const s = souche(t.souche), p = plasmide(t.plasmide), cd = dateTransfo(t.codeDate);
+    const tBoites = S.boites.filter(b=>b.transformation===t.id).sort((a,b)=>a.lettre.localeCompare(b.lettre));
+    let nIso = 0;
+    tBoites.forEach(b=>{ nIso += S.colonies.filter(c=>c.boite===b.id).reduce((acc,c)=>acc+S.isolements.filter(i=>i.colonie===c.id).length,0); });
+    html += '<details class="t-node"><summary><span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span class="id2">'+esc(id2For(t))+'</span>'+plasmidChip(p?p.nom:'')+'</span><span class="meta">'+esc(cd?fmtDate(cd.date):'')+' · '+tBoites.length+' boîte(s) · '+nIso+' isolement(s)</span></summary>';
+    html += '<div class="t-body">';
+    if(!tBoites.length) html += '<div class="empty">Aucune boîte enregistrée.</div>';
+    tBoites.forEach(b=>{
+      const cols = S.colonies.filter(c=>c.boite===b.id).sort((a,c)=>a.numColonie-c.numColonie);
+      html += '<div class="b-block"><div class="b-title">'+esc(nomBoiteFor(b))+'</div>';
+      if(!cols.length) html += '<div class="empty">Aucune colonie.</div>';
+      cols.forEach(c=>{
+        const isos = S.isolements.filter(i=>i.colonie===c.id).sort((a,b2)=>a.numIsolement-b2.numIsolement);
+        html += '<div class="c-row"><div class="c-title">'+esc(idColonieFor(c))+'</div>';
+        if(!isos.length) html += '<div class="empty" style="padding:2px 0;">—</div>';
+        isos.forEach(iso=>{
+          html += '<div class="iso-line"><span class="iso-id">'+esc(idIsolementFor(iso))+'</span>'+badgeFor(iso)+'</div>';
+        });
+        html += '</div>';
+      });
+      html += '</div>';
+    });
+    html += '</div></details>';
+  });
+  html += '</div>';
+  return html;
+}
+
+/* ---------- Tab 2: saisie labo ---------- */
+function renderSaisie(){
+  const el = document.getElementById('panel-saisie');
+  let html = '<div class="card"><div class="select-chain">';
+
+  // Level 1: transformation
+  html += '<div class="chain-level'+(saisie_sel.transfo?' done':'')+'"><h3>1 · Transformation</h3>';
+  html += selectHtml('sel-transfo', [{v:'',t:'— choisir —'},{v:'__new',t:'+ Nouvelle transformation'}].concat(
+    [...S.transformations].sort((a,b)=>{const da=dateTransfo(a.codeDate),db_=dateTransfo(b.codeDate);return (db_?db_.date:0)-(da?da.date:0);})
+      .map(t=>({v:String(t.id), t:id2For(t)}))
+  ), saisie_sel.transfo==='__new' ? '__new' : (saisie_sel.transfo||''));
+  if(saisie_sel.transfo==='__new'){
+    html += newTransfoForm();
+  }
+  html += '</div>';
+
+  const curTransfoId = (saisie_sel.transfo && saisie_sel.transfo!=='__new') ? Number(saisie_sel.transfo) : null;
+
+  if(curTransfoId){
+    html += '<div class="chain-level'+(saisie_sel.boite?' done':'')+'"><h3>2 · Boîte</h3>';
+    const boites = S.boites.filter(b=>b.transformation===curTransfoId).sort((a,b)=>a.lettre.localeCompare(b.lettre));
+    html += selectHtml('sel-boite', [{v:'',t:'— choisir —'},{v:'__new',t:'+ Nouvelle boîte'}].concat(
+      boites.map(b=>({v:String(b.id), t:nomBoiteFor(b)}))
+    ), saisie_sel.boite==='__new' ? '__new' : (saisie_sel.boite||''));
+    if(saisie_sel.boite==='__new'){ html += newBoiteForm(curTransfoId); }
+    html += '</div>';
+  }
+
+  const curBoiteId = (saisie_sel.boite && saisie_sel.boite!=='__new') ? Number(saisie_sel.boite) : null;
+
+  if(curBoiteId){
+    html += '<div class="chain-level'+(saisie_sel.colonie?' done':'')+'"><h3>3 · Colonie</h3>';
+    const cols = S.colonies.filter(c=>c.boite===curBoiteId).sort((a,b)=>a.numColonie-b.numColonie);
+    html += selectHtml('sel-colonie', [{v:'',t:'— choisir —'},{v:'__new',t:'+ Nouvelle colonie'}].concat(
+      cols.map(c=>({v:String(c.id), t:idColonieFor(c)}))
+    ), saisie_sel.colonie==='__new' ? '__new' : (saisie_sel.colonie||''));
+    if(saisie_sel.colonie==='__new'){ html += newColonieForm(curBoiteId); }
+    html += '</div>';
+  }
+
+  const curColonieId = (saisie_sel.colonie && saisie_sel.colonie!=='__new') ? Number(saisie_sel.colonie) : null;
+
+  if(curColonieId){
+    html += '<div class="chain-level'+(saisie_sel.isolement?' done':'')+'"><h3>4 · Isolement</h3>';
+    const isos = S.isolements.filter(i=>i.colonie===curColonieId).sort((a,b)=>a.numIsolement-b.numIsolement);
+    html += selectHtml('sel-isolement', [{v:'',t:'— choisir —'},{v:'__new',t:'+ Nouvel isolement'}].concat(
+      isos.map(i=>({v:String(i.id), t:idIsolementFor(i)+ (nomCollectionFor(i)?(' · '+nomCollectionFor(i)):'')}))
+    ), saisie_sel.isolement==='__new' ? '__new' : (saisie_sel.isolement||''));
+    if(saisie_sel.isolement==='__new'){ html += isolementForm(curColonieId, null); }
+    else if(saisie_sel.isolement){ html += isolementForm(curColonieId, Number(saisie_sel.isolement)); }
+    html += '</div>';
+  }
+
+  html += '</div></div>';
+  el.innerHTML = html;
+  wireSaisieEvents();
+}
+
+function selectHtml(id, options, value){
+  let html = '<select id="'+id+'">';
+  options.forEach(o=>{
+    html += '<option value="'+esc(o.v)+'"'+(String(o.v)===String(value)?' selected':'')+'>'+esc(o.t)+'</option>';
+  });
+  html += '</select>';
+  return html;
+}
+
+function newTransfoForm(){
+  const souchesOpts = [{v:'',t:'— choisir —'}].concat(S.souches.map(s=>({v:String(s.id),t:s.nom})));
+  const plasmidesOpts = [{v:'',t:'— choisir —'},{v:'__new',t:'+ Nouveau plasmide'}].concat(
+    [...S.plasmides].sort((a,b)=>a.nom.localeCompare(b.nom)).map(p=>({v:String(p.id),t:p.nom}))
+  );
+  const datesOpts = [{v:'',t:'— choisir —'},{v:'__new',t:'+ Nouvelle date'}].concat(
+    [...S.datesTransfo].sort((a,b)=>b.date-a.date).map(d=>({v:String(d.id),t:fmtDate(d.date)}))
+  );
+  let html = '<div class="card" style="margin-top:10px;">';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Souche</label>'+selectHtml('new-t-souche', souchesOpts, '')+'</div>';
+  html += '<div class="field"><label>Plasmide</label>'+selectHtml('new-t-plasmide', plasmidesOpts, '')+'</div>';
+  html += '</div>';
+  html += '<div id="new-t-plasmide-new" style="display:none;" class="field-row">';
+  html += '<div class="field"><label>Nom du nouveau plasmide</label><input type="text" id="new-t-plasmide-nom" placeholder="pMB70"></div>';
+  html += '<div class="field"><label>Cassette</label><input type="text" id="new-t-plasmide-cassette"></div>';
+  html += '</div>';
+  html += '<div class="field"><label>Date de transformation</label>'+selectHtml('new-t-date', datesOpts, '')+'</div>';
+  html += '<div id="new-t-date-new" style="display:none;" class="field"><label>Nouvelle date</label><input type="date" id="new-t-date-input"></div>';
+  html += '<button class="btn" id="new-t-save">Créer la transformation</button><div id="new-t-err" class="err"></div>';
+  html += '</div>';
+  return html;
+}
+
+function newBoiteForm(transfoId){
+  let html = '<div class="card" style="margin-top:10px;">';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Lettre de boîte</label><input type="text" id="new-b-lettre" maxlength="2" placeholder="A"></div>';
+  html += '<div class="field"><label>Nombre de colonies (estimé)</label><input type="number" id="new-b-nb" min="0"></div>';
+  html += '</div>';
+  html += '<button class="btn" id="new-b-save" data-transfo="'+transfoId+'">Créer la boîte</button><div id="new-b-err" class="err"></div>';
+  html += '</div>';
+  return html;
+}
+
+function newColonieForm(boiteId){
+  let html = '<div class="card" style="margin-top:10px;">';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Numéro de colonie</label><input type="number" id="new-c-num" min="0"></div>';
+  html += '<div class="field"><label>Date étalement</label><input type="date" id="new-c-etale"></div>';
+  html += '<div class="field"><label>Date isolements</label><input type="date" id="new-c-isol"></div>';
+  html += '</div>';
+  html += '<button class="btn" id="new-c-save" data-boite="'+boiteId+'">Créer la colonie</button><div id="new-c-err" class="err"></div>';
+  html += '</div>';
+  return html;
+}
+
+function isolementForm(colonieId, isoId){
+  const iso = isoId ? S.isolements.find(i=>i.id===isoId) : null;
+  let html = '<div class="card" style="margin-top:10px;">';
+  if(iso){
+    html += '<div class="count-line">ID calculé : <span style="font-family:var(--mono);">'+esc(idIsolementFor(iso))+'</span>'+(nomCollectionFor(iso)?(' · collection <b>'+esc(nomCollectionFor(iso))+'</b>'):'')+'</div>';
+  }
+  html += '<div class="field-row">';
+  if(!iso){
+    html += '<div class="field"><label>Numéro d\'isolement</label><input type="number" id="iso-num" min="0" value=""></div>';
+  }
+  html += '<div class="field"><label>Croissance</label>'+selectHtml('iso-croissance', [{v:'',t:'—'},{v:'Oui',t:'Oui'},{v:'Non',t:'Non'}], iso?iso.croissance:'')+'</div>';
+  html += '<div class="field"><label>Validation PCR</label>'+selectHtml('iso-pcr', [{v:'',t:'—'},{v:'Oui',t:'Oui'},{v:'Non',t:'Non'}], iso?iso.validationPCR:'')+'</div>';
+  html += '</div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Date PCR</label><input type="date" id="iso-datepcr" value="'+esc(iso?tsToInputDate(iso.datePCR):'')+'"></div>';
+  html += '<div class="field"><label>Date repiquage</label><input type="date" id="iso-daterep" value="'+esc(iso?tsToInputDate(iso.dateRepiquage):'')+'"></div>';
+  html += '</div>';
+  html += '<div class="field"><label>Commentaire</label><textarea id="iso-comment">'+esc(iso?iso.commentaire:'')+'</textarea></div>';
+  html += '<button class="btn" id="iso-save" data-colonie="'+colonieId+'" data-iso="'+(isoId||'')+'">'+(iso?'Enregistrer les modifications':'Créer l\'isolement')+'</button>';
+  html += '<div id="iso-err" class="err"></div><div id="iso-ok" class="ok-msg"></div>';
+  html += '</div>';
+  return html;
+}
+
+function wireSaisieEvents(){
+  const st = document.getElementById('sel-transfo');
+  if(st) st.addEventListener('change', ()=>{ saisie_sel = {transfo: st.value, boite:null, colonie:null, isolement:null}; renderSaisie(); });
+
+  const sb = document.getElementById('sel-boite');
+  if(sb) sb.addEventListener('change', ()=>{ saisie_sel.boite = sb.value; saisie_sel.colonie=null; saisie_sel.isolement=null; renderSaisie(); });
+
+  const sc = document.getElementById('sel-colonie');
+  if(sc) sc.addEventListener('change', ()=>{ saisie_sel.colonie = sc.value; saisie_sel.isolement=null; renderSaisie(); });
+
+  const si = document.getElementById('sel-isolement');
+  if(si) si.addEventListener('change', ()=>{ saisie_sel.isolement = si.value; renderSaisie(); });
+
+  const dateSel = document.getElementById('new-t-date');
+  if(dateSel) dateSel.addEventListener('change', ()=>{
+    document.getElementById('new-t-date-new').style.display = dateSel.value==='__new' ? 'block' : 'none';
+  });
+
+  const plasmideSel = document.getElementById('new-t-plasmide');
+  if(plasmideSel) plasmideSel.addEventListener('change', ()=>{
+    document.getElementById('new-t-plasmide-new').style.display = plasmideSel.value==='__new' ? 'flex' : 'none';
+  });
+
+  const tSave = document.getElementById('new-t-save');
+  if(tSave) tSave.addEventListener('click', onSaveNewTransfo);
+
+  const bSave = document.getElementById('new-b-save');
+  if(bSave) bSave.addEventListener('click', onSaveNewBoite);
+
+  const cSave = document.getElementById('new-c-save');
+  if(cSave) cSave.addEventListener('click', onSaveNewColonie);
+
+  const iSave = document.getElementById('iso-save');
+  if(iSave) iSave.addEventListener('click', onSaveIsolement);
+}
+
+async function onSaveNewTransfo(){
+  const errEl = document.getElementById('new-t-err');
+  errEl.textContent = '';
+  const sId = Number(document.getElementById('new-t-souche').value);
+  const plasmideSel = document.getElementById('new-t-plasmide').value;
+  const dateSel = document.getElementById('new-t-date').value;
+  if(!sId || !plasmideSel || !dateSel){ errEl.textContent = 'Choisissez une souche, un plasmide et une date.'; return; }
+  try{
+    let pId;
+    if(plasmideSel==='__new'){
+      const nom = document.getElementById('new-t-plasmide-nom').value.trim();
+      if(!nom){ errEl.textContent = 'Indiquez le nom du nouveau plasmide.'; return; }
+      const cassette = document.getElementById('new-t-plasmide-cassette').value.trim();
+      pId = nextId('plasmides');
+      await db.collection('plasmides').doc(String(pId)).set({id:pId, nom, cassette});
+    } else {
+      pId = Number(plasmideSel);
+    }
+    let dateId;
+    if(dateSel==='__new'){
+      const dv = document.getElementById('new-t-date-input').value;
+      if(!dv){ errEl.textContent = 'Indiquez la nouvelle date.'; return; }
+      dateId = nextId('datesTransfo');
+      await db.collection('datesTransfo').doc(String(dateId)).set({id:dateId, date:dateToTs(dv)});
+    } else {
+      dateId = Number(dateSel);
+    }
+    const tId = nextId('transformations');
+    await db.collection('transformations').doc(String(tId)).set({id:tId, souche:sId, plasmide:pId, codeDate:dateId});
+    saisie_sel = {transfo:String(tId), boite:null, colonie:null, isolement:null};
+  }catch(e){ errEl.textContent = "Échec de l'enregistrement. Réessayez."; }
+}
+
+async function onSaveNewBoite(btnEvt){
+  const btn = document.getElementById('new-b-save');
+  const transfoId = Number(btn.dataset.transfo);
+  const errEl = document.getElementById('new-b-err');
+  errEl.textContent = '';
+  const lettre = document.getElementById('new-b-lettre').value.trim().toUpperCase();
+  const nb = document.getElementById('new-b-nb').value;
+  if(!lettre){ errEl.textContent = 'Indiquez une lettre de boîte.'; return; }
+  try{
+    const bId = nextId('boites');
+    await db.collection('boites').doc(String(bId)).set({id:bId, lettre, transformation:transfoId, nbColonies: nb?Number(nb):0});
+    saisie_sel.boite = String(bId); saisie_sel.colonie=null; saisie_sel.isolement=null;
+  }catch(e){ errEl.textContent = "Échec de l'enregistrement. Réessayez."; }
+}
+
+async function onSaveNewColonie(){
+  const btn = document.getElementById('new-c-save');
+  const boiteId = Number(btn.dataset.boite);
+  const errEl = document.getElementById('new-c-err');
+  errEl.textContent = '';
+  const num = document.getElementById('new-c-num').value;
+  if(num===''){ errEl.textContent = 'Indiquez un numéro de colonie.'; return; }
+  const etale = document.getElementById('new-c-etale').value;
+  const isolD = document.getElementById('new-c-isol').value;
+  try{
+    const cId = nextId('colonies');
+    await db.collection('colonies').doc(String(cId)).set({
+      id:cId, boite:boiteId, numColonie:Number(num),
+      dateEtalement: etale?dateToTs(etale):null, dateIsolements: isolD?dateToTs(isolD):null, nbIsolements:0
+    });
+    saisie_sel.colonie = String(cId); saisie_sel.isolement=null;
+  }catch(e){ errEl.textContent = "Échec de l'enregistrement. Réessayez."; }
+}
+
+async function onSaveIsolement(){
+  const btn = document.getElementById('iso-save');
+  const colonieId = Number(btn.dataset.colonie);
+  const existingId = btn.dataset.iso ? Number(btn.dataset.iso) : null;
+  const errEl = document.getElementById('iso-err');
+  const okEl = document.getElementById('iso-ok');
+  errEl.textContent = ''; okEl.textContent = '';
+
+  const croissance = document.getElementById('iso-croissance').value;
+  const validationPCR = document.getElementById('iso-pcr').value;
+  const datePCR = document.getElementById('iso-datepcr').value;
+  const dateRep = document.getElementById('iso-daterep').value;
+  const commentaire = document.getElementById('iso-comment').value;
+
+  let numIsolement;
+  if(existingId){
+    const cur = S.isolements.find(i=>i.id===existingId);
+    numIsolement = cur ? cur.numIsolement : 0;
+  } else {
+    const numInput = document.getElementById('iso-num');
+    if(numInput.value===''){ errEl.textContent = "Indiquez un numéro d'isolement."; return; }
+    numIsolement = Number(numInput.value);
+  }
+
+  const id = existingId || nextId('isolements');
+  const data = {
+    id, colonie: colonieId, numIsolement,
+    croissance, validationPCR,
+    datePCR: datePCR?dateToTs(datePCR):null,
+    commentaire: commentaire||'',
+    dateRepiquage: dateRep?dateToTs(dateRep):null,
+    dernierEditeur: meProfile.id || null,
+    dernierEditeurNom: meProfile.name || ''
+  };
+  try{
+    await db.collection('isolements').doc(String(id)).set(data);
+    okEl.textContent = existingId ? 'Modifications enregistrées.' : 'Isolement créé.';
+    if(!existingId){ saisie_sel.isolement = String(id); }
+  }catch(e){ errEl.textContent = "Échec de l'enregistrement. Réessayez."; }
+}
+
+/* ---------- Tab 3: catalogue MoClo ---------- */
+let moclo_addform_open = false;
+
+function renderMoclo(){
+  const el = document.getElementById('panel-moclo');
+  const kits = [...new Set(S.moclo.map(m=>m.kit).filter(Boolean))].sort();
+  const legend = '<div class="count-line" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">Kits : '+kits.map(k=>plasmidChip(k)).join('')+'</div>';
+  const levels = [...new Set(S.moclo.map(m=>m.level).filter(Boolean))].sort();
+  const resistances = [...new Set(S.moclo.map(m=>m.resistance.trim()).filter(Boolean))].sort();
+
+  let html = legend;
+  html += '<div style="display:flex;justify-content:flex-end;margin:-2px 0 10px;">';
+  html += '<button class="btn secondary" id="moclo-add-toggle">'+(moclo_addform_open?'Annuler':'+ Nouveau plasmide')+'</button>';
+  html += '</div>';
+  if(moclo_addform_open){ html += newMocloForm(kits); }
+  html += '<div class="moclo-filters">';
+  html += selectFilter('f-kit', ['— tous kits —'].concat(kits), moclo_filters.kit);
+  html += selectFilter('f-level', ['— tous niveaux —'].concat(levels), moclo_filters.level);
+  html += selectFilter('f-resistance', ['— toute résistance —'].concat(resistances), moclo_filters.resistance);
+  html += '</div>';
+  html += '<div class="search-box"><input type="search" id="f-q" placeholder="Rechercher un plasmide, un insert, une boîte…" value="'+esc(moclo_filters.q)+'"></div>';
+
+  const filtered = S.moclo.filter(m=>{
+    if(moclo_filters.kit && m.kit!==moclo_filters.kit) return false;
+    if(moclo_filters.level && m.level!==moclo_filters.level) return false;
+    if(moclo_filters.resistance && m.resistance.trim()!==moclo_filters.resistance) return false;
+    if(moclo_filters.q){
+      const hay = [m.plasmid,m.insert,m.box,m.glycerol,m.source].join(' ').toLowerCase();
+      if(!hay.includes(moclo_filters.q.toLowerCase())) return false;
+    }
+    return true;
+  });
+
+  html += '<div class="count-line">'+filtered.length+' plasmide(s) sur '+S.moclo.length+'</div>';
+  html += '<div class="table-wrap"><table class="moclo-table"><thead><tr>';
+  ['Kit','Boîte','Position','Plasmide','Niveau','Résistance','Insert','Stock','Miniprep'].forEach(h=>{ html += '<th>'+h+'</th>'; });
+  html += '</tr></thead><tbody>';
+  if(!filtered.length){ html += '<tr><td colspan="9" class="empty">Aucun résultat.</td></tr>'; }
+  filtered.forEach(m=>{
+    html += '<tr>';
+    html += '<td>'+plasmidChip(m.kit)+'</td>';
+    html += '<td>'+esc(m.box)+'</td>';
+    html += '<td class="mono">'+esc(m.row)+m.col+'</td>';
+    html += '<td class="mono"><span style="display:inline-flex;align-items:center;gap:6px;">'+colorDot(m.plasmid)+esc(m.plasmid)+'</span></td>';
+    html += '<td>'+esc(m.level)+'</td>';
+    html += '<td>'+esc(m.resistance)+'</td>';
+    html += '<td>'+esc(m.insert)+'</td>';
+    html += '<td>'+(m.stock==='Yes'?'<span class="badge good">oui</span>':(m.stock==='No'?'<span class="badge bad">non</span>':'—'))+'</td>';
+    html += '<td>'+(m.miniprep==='Yes'?'<span class="badge good">oui</span>':(m.miniprep==='No'?'<span class="badge bad">non</span>':'—'))+'</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+
+  el.innerHTML = html;
+
+  document.getElementById('f-kit').addEventListener('change', e=>{ moclo_filters.kit = e.target.value.startsWith('—')?'':e.target.value; renderMoclo(); });
+  document.getElementById('f-level').addEventListener('change', e=>{ moclo_filters.level = e.target.value.startsWith('—')?'':e.target.value; renderMoclo(); });
+  document.getElementById('f-resistance').addEventListener('change', e=>{ moclo_filters.resistance = e.target.value.startsWith('—')?'':e.target.value; renderMoclo(); });
+  const q = document.getElementById('f-q');
+  q.addEventListener('input', e=>{ moclo_filters.q = e.target.value; renderMoclo(); });
+  if(document.activeElement===document.body || !moclo_addform_open){ q.focus(); q.selectionStart = q.selectionEnd = q.value.length; }
+
+  document.getElementById('moclo-add-toggle').addEventListener('click', ()=>{
+    moclo_addform_open = !moclo_addform_open;
+    renderMoclo();
+  });
+  const mSave = document.getElementById('moclo-save');
+  if(mSave) mSave.addEventListener('click', onSaveNewMoclo);
+}
+
+function newMocloForm(existingKits){
+  const kitOpts = [{v:'',t:'— choisir ou saisir ci-dessous —'}].concat(existingKits.map(k=>({v:k,t:k})));
+  let html = '<div class="card">';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Kit existant</label>'+selectHtml('new-m-kit-sel', kitOpts, '')+'</div>';
+  html += '<div class="field"><label>ou nouveau kit</label><input type="text" id="new-m-kit-new" placeholder="Nom du nouveau kit"></div>';
+  html += '</div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Nom du plasmide</label><input type="text" id="new-m-plasmid" placeholder="pICH12345"></div>';
+  html += '<div class="field"><label>Boîte</label><input type="text" id="new-m-box"></div>';
+  html += '</div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Ligne</label><input type="text" id="new-m-row" maxlength="2"></div>';
+  html += '<div class="field"><label>Colonne</label><input type="text" id="new-m-col" maxlength="2"></div>';
+  html += '<div class="field"><label>Stock glycérol</label><input type="text" id="new-m-glycerol"></div>';
+  html += '</div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Résistance</label><input type="text" id="new-m-resistance" placeholder="Kanamycin"></div>';
+  html += '<div class="field"><label>Niveau</label><input type="text" id="new-m-level" placeholder="L1"></div>';
+  html += '<div class="field"><label>Insert</label><input type="text" id="new-m-insert"></div>';
+  html += '</div>';
+  html += '<div class="field-row">';
+  html += '<div class="field"><label>Source</label><input type="text" id="new-m-source"></div>';
+  html += '<div class="field"><label>Stock disponible</label>'+selectHtml('new-m-stock', [{v:'',t:'—'},{v:'Yes',t:'Oui'},{v:'No',t:'Non'}], '')+'</div>';
+  html += '<div class="field"><label>Miniprep faite</label>'+selectHtml('new-m-miniprep', [{v:'',t:'—'},{v:'Yes',t:'Oui'},{v:'No',t:'Non'}], '')+'</div>';
+  html += '</div>';
+  html += '<button class="btn" id="moclo-save">Ajouter le plasmide</button>';
+  html += '<div id="moclo-err" class="err"></div><div id="moclo-ok" class="ok-msg"></div>';
+  html += '</div>';
+  return html;
+}
+
+async function onSaveNewMoclo(){
+  const errEl = document.getElementById('moclo-err');
+  const okEl = document.getElementById('moclo-ok');
+  errEl.textContent=''; okEl.textContent='';
+  const kitSel = document.getElementById('new-m-kit-sel').value;
+  const kitNew = document.getElementById('new-m-kit-new').value.trim();
+  const kit = kitNew || kitSel;
+  const plasmid = document.getElementById('new-m-plasmid').value.trim();
+  if(!kit){ errEl.textContent = 'Choisissez un kit existant ou saisissez-en un nouveau.'; return; }
+  if(!plasmid){ errEl.textContent = 'Indiquez le nom du plasmide.'; return; }
+  const data = {
+    id: nextId('moclo'),
+    kit, plasmid,
+    box: document.getElementById('new-m-box').value.trim(),
+    row: document.getElementById('new-m-row').value.trim(),
+    col: document.getElementById('new-m-col').value.trim(),
+    glycerol: document.getElementById('new-m-glycerol').value.trim(),
+    resistance: document.getElementById('new-m-resistance').value.trim(),
+    level: document.getElementById('new-m-level').value.trim(),
+    insert: document.getElementById('new-m-insert').value.trim(),
+    source: document.getElementById('new-m-source').value.trim(),
+    stock: document.getElementById('new-m-stock').value,
+    miniprep: document.getElementById('new-m-miniprep').value
+  };
+  try{
+    await db.collection('moclo').doc(String(data.id)).set(data);
+    okEl.textContent = 'Plasmide ajouté au catalogue.';
+    moclo_addform_open = false;
+    renderMoclo();
+  }catch(e){ errEl.textContent = "Échec de l'enregistrement. Réessayez."; }
+}
+
+function selectFilter(id, options, value){
+  let html = '<select id="'+id+'">';
+  options.forEach(o=>{
+    html += '<option'+(o===value || (value===''&&o.startsWith('—'))?' selected':'')+'>'+esc(o)+'</option>';
+  });
+  html += '</select>';
+  return html;
+}
+
+/* ---------- boot ---------- */
+async function boot(){
+  if(SUPABASE_URL.includes('VOTRE-PROJET') || SUPABASE_ANON_KEY.includes('VOTRE_CLE')){
+    renderNotConfigured();
+    return;
+  }
+  if(!window.supabase){
+    document.getElementById('auth-gate').innerHTML =
+      '<div class="card">La librairie supabase-js n\'a pas pu se charger (vérifiez votre connexion ou le CDN dans le &lt;head&gt;).</div>';
+    return;
+  }
+  sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const { data } = await sbClient.auth.getSession();
+  authSession = data.session;
+  renderAuthGate();
+
+  sbClient.auth.onAuthStateChange((_event, newSession)=>{
+    authSession = newSession;
+    renderAuthGate();
+  });
+}
+
+function renderNotConfigured(){
+  document.getElementById('auth-gate').innerHTML =
+    '<div class="card"><b>Configuration requise.</b> Ouvrez ce fichier et renseignez '+
+    '<code>SUPABASE_URL</code> et <code>SUPABASE_ANON_KEY</code> en haut du second bloc '+
+    '&lt;script&gt; (valeurs disponibles dans Project Settings → API de votre projet Supabase). '+
+    'Voir le README pour la marche à suivre complète.</div>';
+}
+
+boot();
+})();
+</script>
+</body>
+</html>
